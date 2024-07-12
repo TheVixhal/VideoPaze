@@ -1,19 +1,13 @@
-import re
-from flask import Flask, request, send_file, render_template_string, Response
-import yt_dlp
+from flask import Flask, request, render_template_string, Response
 import requests
+import re
 
 app = Flask(__name__)
 
-def get_video_info(url):
+def download_video(url):
     try:
-        with yt_dlp.YoutubeDL() as ydl:
-            info_dict = ydl.extract_info(url, download=False)
-            video_url = info_dict.get('url', None)
-            if video_url:
-                return video_url, None
-            else:
-                return None, "Failed to get video URL."
+        response = requests.get(url, stream=True)
+        return response, None
     except Exception as e:
         return None, f"Error downloading video: {e}"
 
@@ -23,22 +17,17 @@ def index():
     if request.method == 'POST':
         url = request.form['url']
         if 'instagram.com/reel/' in url or 'youtube.com/' in url or 'youtu.be/' in url:
-            video_url, error = get_video_info(url)
-            if video_url:
-                def generate():
-                    with requests.get(video_url, stream=True) as response:
-                        response.raise_for_status()
-                        for chunk in response.iter_content(chunk_size=8192):
-                            yield chunk
+            response, error = download_video(url)
+            if response and response.status_code == 200:
                 return Response(
-                    generate(),
+                    response.iter_content(chunk_size=1024),
                     headers={
                         'Content-Disposition': 'attachment; filename=video.mp4',
                         'Content-Type': 'video/mp4',
                     }
                 )
             else:
-                message = error
+                message = error if error else "Error downloading video."
         else:
             message = "Invalid URL. Please enter a valid Instagram reel or YouTube video URL."
     
@@ -74,7 +63,7 @@ def index():
                 font-size: 2.5em;
                 text-align: center;
                 margin-bottom: 0px;
-                cursor: url(myBall.cur),auto;
+                cursor: pointer;
               }
               h2 {
                 font-family: "Playwrite GB J", cursive;                  
@@ -82,7 +71,7 @@ def index():
                 font-weight: lighter;                  
                 text-align: center;
                 margin-bottom: 5px;
-                cursor: url(myBall.cur),auto;
+                cursor: pointer;
               }
               p {
                font-family: "Playwrite GB J", cursive;
@@ -146,10 +135,10 @@ def index():
             </header>
             <div class="container">
               <h2>Video Downloader</h2>
-              <p>[Download YouTube Videos]</p>
+              <p>[Download Instagram and YouTube Videos]</p>
               <form method="post">
                   <label for="url">Video URL</label>
-                  <input type="text" class="form-control" id="url" name="url" placeholder="Enter YouTube video URL">
+                  <input type="text" class="form-control" id="url" name="url" placeholder="Enter Instagram reel or YouTube video URL">
                   <button type="submit" class="btn btn-primary">Download</button>
               </form>
               <div class="social-icons">
