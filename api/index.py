@@ -74,7 +74,7 @@ def index():
                 font-size: 2.5em;
                 text-align: center;
                 margin-bottom: 0px;
-                cursor: pointer;
+                cursor: url(myBall.cur),auto;
               }
               h2 {
                 font-family: "Playwrite GB J", cursive;                  
@@ -82,7 +82,7 @@ def index():
                 font-weight: lighter;                  
                 text-align: center;
                 margin-bottom: 5px;
-                cursor: pointer;
+                cursor: url(myBall.cur),auto;
               }
               p {
                font-family: "Playwrite GB J", cursive;
@@ -146,10 +146,10 @@ def index():
             </header>
             <div class="container">
               <h2>Video Downloader</h2>
-              <p>[Download Instagram and YouTube Videos]</p>
+              <p>[Download YouTube Videos]</p>
               <form method="post">
                   <label for="url">Video URL</label>
-                  <input type="text" class="form-control" id="url" name="url" placeholder="Enter Instagram reel or YouTube video URL">
+                  <input type="text" class="form-control" id="url" name="url" placeholder="Enter YouTube video URL">
                   <button type="submit" class="btn btn-primary">Download</button>
               </form>
               <div class="social-icons">
