@@ -2,7 +2,6 @@ import re
 from flask import Flask, request, send_file, render_template_string, Response
 import yt_dlp
 import requests
-from io import BytesIO
 
 app = Flask(__name__)
 
@@ -26,17 +25,18 @@ def index():
         if 'instagram.com/reel/' in url or 'youtube.com/' in url or 'youtu.be/' in url:
             video_url, error = get_video_info(url)
             if video_url:
-                response = requests.get(video_url, stream=True)
-                if response.status_code == 200:
-                    return Response(
-                        response.iter_content(chunk_size=8192),
-                        headers={
-                            'Content-Disposition': 'attachment; filename=video.mp4',
-                            'Content-Type': 'video/mp4',
-                        }
-                    )
-                else:
-                    message = "Error retrieving the video content."
+                def generate():
+                    with requests.get(video_url, stream=True) as response:
+                        response.raise_for_status()
+                        for chunk in response.iter_content(chunk_size=8192):
+                            yield chunk
+                return Response(
+                    generate(),
+                    headers={
+                        'Content-Disposition': 'attachment; filename=video.mp4',
+                        'Content-Type': 'video/mp4',
+                    }
+                )
             else:
                 message = error
         else:
@@ -146,10 +146,10 @@ def index():
             </header>
             <div class="container">
               <h2>Video Downloader</h2>
-              <p>[Download YouTube Videos]</p>
+              <p>[Download Instagram and YouTube Videos]</p>
               <form method="post">
                   <label for="url">Video URL</label>
-                  <input type="text" class="form-control" id="url" name="url" placeholder="Enter YouTube video URL">
+                  <input type="text" class="form-control" id="url" name="url" placeholder="Enter Instagram reel or YouTube video URL">
                   <button type="submit" class="btn btn-primary">Download</button>
               </form>
               <div class="social-icons">
