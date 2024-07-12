@@ -1,15 +1,18 @@
 from flask import Flask, request, render_template_string, Response
 import requests
 import re
+import yt_dlp
 
 app = Flask(__name__)
 
-def download_video(url):
+def get_video_info(url):
     try:
-        response = requests.get(url, stream=True)
-        return response, None
+        with yt_dlp.YoutubeDL() as ydl:
+            info_dict = ydl.extract_info(url, download=False)
+            video_url = info_dict.get('url')
+            return video_url, None
     except Exception as e:
-        return None, f"Error downloading video: {e}"
+        return None, f"Error extracting video URL: {e}"
 
 @app.route('/', methods=['GET', 'POST'])
 def index():
@@ -17,20 +20,24 @@ def index():
     if request.method == 'POST':
         url = request.form['url']
         if 'instagram.com/reel/' in url or 'youtube.com/' in url or 'youtu.be/' in url:
-            response, error = download_video(url)
-            if response and response.status_code == 200:
-                return Response(
-                    response.iter_content(chunk_size=1024),
-                    headers={
-                        'Content-Disposition': 'attachment; filename=video.mp4',
-                        'Content-Type': 'video/mp4',
-                    }
-                )
+            video_url, error = get_video_info(url)
+            if video_url:
+                response = requests.get(video_url, stream=True)
+                if response.status_code == 200:
+                    return Response(
+                        response.iter_content(chunk_size=1024),
+                        headers={
+                            'Content-Disposition': 'attachment; filename=video.mp4',
+                            'Content-Type': 'video/mp4',
+                        }
+                    )
+                else:
+                    message = "Error downloading video."
             else:
-                message = error if error else "Error downloading video."
+                message = error if error else "Error extracting video URL."
         else:
             message = "Invalid URL. Please enter a valid Instagram reel or YouTube video URL."
-    
+
     return render_template_string('''
         <!doctype html>
         <html lang="en">
@@ -135,7 +142,7 @@ def index():
             </header>
             <div class="container">
               <h2>Video Downloader</h2>
-              <p>[Download Instagram and YouTube Videos]</p>
+              <p>[Download YouTube Videos]</p>
               <form method="post">
                   <label for="url">Video URL</label>
                   <input type="text" class="form-control" id="url" name="url" placeholder="Enter Instagram reel or YouTube video URL">
