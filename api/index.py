@@ -1,13 +1,17 @@
 from flask import Flask, request, render_template_string, Response
 import requests
-import re
 import yt_dlp
 
 app = Flask(__name__)
 
 def get_video_info(url):
     try:
-        with yt_dlp.YoutubeDL() as ydl:
+        ydl_opts = {
+            'noplaylist': True,  # Ensure only single videos are processed
+            'geo-bypass': True,  # Bypass geographical restrictions
+            'no_warnings': True, # Suppress warnings
+        }
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info_dict = ydl.extract_info(url, download=False)
             video_url = info_dict.get('url')
             return video_url, None
@@ -18,21 +22,24 @@ def get_video_info(url):
 def index():
     message = ""
     if request.method == 'POST':
-        url = request.form['url']
-        if 'instagram.com/reel/' in url or 'youtube.com/' in url or 'youtu.be/' in url:
+        url = request.form.get('url')
+        if url and ('instagram.com/reel/' in url or 'youtube.com/' in url or 'youtu.be/' in url):
             video_url, error = get_video_info(url)
             if video_url:
-                response = requests.get(video_url, stream=True)
-                if response.status_code == 200:
-                    return Response(
-                        response.iter_content(chunk_size=1024),
-                        headers={
-                            'Content-Disposition': 'attachment; filename=video.mp4',
-                            'Content-Type': 'video/mp4',
-                        }
-                    )
-                else:
-                    message = "Error downloading video."
+                try:
+                    response = requests.get(video_url, stream=True)
+                    if response.status_code == 200:
+                        return Response(
+                            response.iter_content(chunk_size=1024),
+                            headers={
+                                'Content-Disposition': 'attachment; filename=video.mp4',
+                                'Content-Type': 'video/mp4',
+                            }
+                        )
+                    else:
+                        message = "Error downloading video."
+                except Exception as e:
+                    message = f"Error fetching video: {e}"
             else:
                 message = error if error else "Error extracting video URL."
         else:
