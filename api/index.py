@@ -1,19 +1,30 @@
 from flask import Flask, request, render_template_string, Response
 import requests
 from pytube import YouTube
-import re
+import yt_dlp
 
 app = Flask(__name__)
 
 def get_video_info(url):
     try:
         if 'youtube.com' in url or 'youtu.be' in url:
-            yt = YouTube(url)
-            video_url = yt.streams.filter(progressive=True, file_extension='mp4').first().url
-            return video_url, None
+            # Try using pytube first
+            try:
+                yt = YouTube(url)
+                video_url = yt.streams.filter(progressive=True, file_extension='mp4').first().url
+                return video_url, None
+            except Exception as e:
+                # Fallback to yt-dlp if pytube fails
+                try:
+                    with yt_dlp.YoutubeDL() as ydl:
+                        info_dict = ydl.extract_info(url, download=False)
+                        video_url = info_dict.get('url')
+                        return video_url, None
+                except Exception as e:
+                    return None, f"Error extracting video URL with yt-dlp: {e}"
         elif 'instagram.com/reel/' in url:
-            # Note: Instagram support with pytube is not provided, this is a placeholder.
-            return None, "Instagram video extraction is not supported with pytube."
+            # Instagram extraction is not supported with pytube or yt-dlp
+            return None, "Instagram video extraction is not supported."
         else:
             return None, "Unsupported URL format."
     except Exception as e:
