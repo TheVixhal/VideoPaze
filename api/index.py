@@ -1,20 +1,21 @@
 from flask import Flask, request, render_template_string, Response
 import requests
-import yt_dlp
+from pytube import YouTube
+import re
 
 app = Flask(__name__)
 
 def get_video_info(url):
     try:
-        ydl_opts = {
-            'noplaylist': True,  # Ensure only single videos are processed
-            'geo-bypass': True,  # Bypass geographical restrictions
-            'no_warnings': True, # Suppress warnings
-        }
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info_dict = ydl.extract_info(url, download=False)
-            video_url = info_dict.get('url')
+        if 'youtube.com' in url or 'youtu.be' in url:
+            yt = YouTube(url)
+            video_url = yt.streams.filter(progressive=True, file_extension='mp4').first().url
             return video_url, None
+        elif 'instagram.com/reel/' in url:
+            # Note: Instagram support with pytube is not provided, this is a placeholder.
+            return None, "Instagram video extraction is not supported with pytube."
+        else:
+            return None, "Unsupported URL format."
     except Exception as e:
         return None, f"Error extracting video URL: {e}"
 
@@ -23,7 +24,7 @@ def index():
     message = ""
     if request.method == 'POST':
         url = request.form.get('url')
-        if url and ('instagram.com/reel/' in url or 'youtube.com/' in url or 'youtu.be/' in url):
+        if url:
             video_url, error = get_video_info(url)
             if video_url:
                 try:
@@ -43,7 +44,7 @@ def index():
             else:
                 message = error if error else "Error extracting video URL."
         else:
-            message = "Invalid URL. Please enter a valid Instagram reel or YouTube video URL."
+            message = "Please enter a valid URL."
 
     return render_template_string('''
         <!doctype html>
